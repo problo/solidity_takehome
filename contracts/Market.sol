@@ -2,6 +2,39 @@ pragma solidity ^0.8.0;
 
 import "./ERC20.sol";
 
+/*
+Vulnerabilities I found:
+
+1. An attacker can steal the whole balance by calling the `claimProfits` function from his own contract.
+Because, in this case, (msg.sender != tx.origin) returns true.
+
+Solution: we should make the `onlyOwner` modifier like this.
+
+    modifier onlyOwner(){
+        require(msg.sender == owner && msg.sender == tx.origin);
+        _;
+    }
+
+2. An attacker can call the `signedTransfer` function several times with an old signature because `usedSignatures` is never set.
+
+Solution: we should set `usedSignatures` when the function succeeds.
+    usedSignatures[sigHash] = true;
+
+3. An attacker can execute a malicious code by calling the `withdraw` function, passing his own contract's address as the `pool` parameter.
+
+Solution: we should check if the pool is registered by the owner.
+    require(poolRegistration[pool]);
+
+4. Inside the 'withdraw' function, when delegate calling the pool's withdraw function, we should also pass the `amount` as a parameter.
+Or else, we can't check whether the user is eligible to withdraw this amount of token or not.
+
+5. The first parameter of the `abi.encodeWithSignature()` function is the signature of the function.
+And it shouldn't include white spaces.
+For example, 
+inside the deposit() function, "tokenDeposit(address, address, uint256)" => "tokenDeposit(address,address,uint256)"
+inside the withdraw() function, "withdraw(address, address)" => "withdraw(address,address)"
+*/
+
 // This yield farm accepts token deposits for integrators
 // and takes a small fee which is claimable from farming profits
 contract Market is ERC20 {
